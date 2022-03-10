@@ -1,0 +1,10 @@
+﻿{
+	"name": "Reconsume",
+	"version_number": "1.0.0",
+	"website_url": "https://github.com/jiejasonliu/ror2-reconsume",
+	"description": "Restore consumed items at the beginning of each stage and also allow them to be scrapped.",
+	"dependencies": [
+		"bbepis-BepInExPack-5.4.9",
+		"tristanmcpherson-R2API-4.0.11"
+	]
+}
