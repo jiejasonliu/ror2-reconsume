@@ -1,12 +1,12 @@
-# Reconsume
+# [Reconsume](https://thunderstore.io/package/jiejasonliu/Reconsume/)
 
 Survivors of the Void brings consumable items; but unfortunately, they feel underwhelming.\
-Reconsume __restores these items at the beginning of each stage__ and __allows them to be scrappable__.
+Reconsume **restores consumed items at the beginning of each stage** and **allows them to be scrappable**.
 
 ## Features
 
-- Restore consumed `power elixir` and `delicate watch` at the beginning of each stage
-- Allow consumed `power elixir` and `delicate watch` to be scrappable
+- Restore consumed `power elixir`, `delicate watch`, and `dio's best friend`<sup><i>(off by default)</i></sup> at the beginning of each stage
+- Allow consumed `power elixir`, `delicate watch`, and `dio's best friend`<sup><i>(off by default)</i></sup> to be scrappable
 - Adjust heal strength of the power elixir to 25% max health for balancing
 - Highly configurable
 	- Change whether an item can be scrappable or refilled at the beginning of each stage
@@ -24,4 +24,5 @@ Reconsume __restores these items at the beginning of each stage__ and __allows t
 
 ## Changelog
 
+- `1.0.1` Allow Dio's Best Friend to be restored and scrappable; however, this is **disabled by default.**
 - `1.0.0` Initial release
