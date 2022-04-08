@@ -24,6 +24,9 @@ namespace Reconsume
         // delicate watch config
         protected static ConfigEntry<bool> RefillDelicateWatch, ScrapConsumedDelicateWatch;
 
+        // dios config
+        protected static ConfigEntry<bool> RefillDiosBestFriend, ScrapConsumedDiosBestFriend;
+
         public void Awake()
         {
             Log.Init(Logger);
@@ -50,6 +53,10 @@ namespace Reconsume
             // delicate watch
             RefillDelicateWatch = Config.Bind("DelicateWatch", nameof(RefillDelicateWatch), true, "Restore delicate watch at the beginning of each stage");
             ScrapConsumedDelicateWatch = Config.Bind("DelicateWatch", nameof(ScrapConsumedDelicateWatch), true, "Allow scrapping consumed delicate watches");
+
+            // dio's
+            RefillDiosBestFriend = Config.Bind("DiosBestFriend", nameof(RefillDiosBestFriend), false, "Restore dio's best friend at the beginning of each stage");
+            ScrapConsumedDiosBestFriend = Config.Bind("DiosBestFriend", nameof(ScrapConsumedDiosBestFriend), false, "Allow scrapping consumed dio's best friend");
         }
 
         /// find items from game content and setup mappings with configuration
@@ -62,6 +69,7 @@ namespace Reconsume
             {
                 { DLC1Content.Items.HealingPotionConsumed, DLC1Content.Items.HealingPotion },
                 { DLC1Content.Items.FragileDamageBonusConsumed, DLC1Content.Items.FragileDamageBonus },
+                { RoR2Content.Items.ExtraLifeConsumed, RoR2Content.Items.ExtraLife },
             };
 
             // consumed item -> polymorphic config data
@@ -69,6 +77,8 @@ namespace Reconsume
             {
                 { DLC1Content.Items.HealingPotionConsumed, new CandidateItemConfigData(RefillPowerElixir, ScrapConsumedPowerElixir) },
                 { DLC1Content.Items.FragileDamageBonusConsumed, new CandidateItemConfigData(RefillDelicateWatch, ScrapConsumedDelicateWatch) },
+                { RoR2Content.Items.ExtraLifeConsumed, new CandidateItemConfigData(RefillDiosBestFriend, ScrapConsumedDiosBestFriend) },
+
             };
         }
 
