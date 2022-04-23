@@ -24,5 +24,6 @@ Reconsume **restores consumed items at the beginning of each stage** and **allow
 
 ## Changelog
 
+- `1.0.2` Fix broken scrapper due to `ItemDef.tier` changes in RoR2 v1.2.3
 - `1.0.1` Allow Dio's Best Friend to be restored and scrappable; however, this is **disabled by default.**
 - `1.0.0` Initial release

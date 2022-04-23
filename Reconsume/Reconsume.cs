@@ -11,7 +11,7 @@ namespace Reconsume
 {
 
     [BepInDependency(R2API.R2API.PluginGUID)]
-    [BepInPlugin("com.jiejasonliu.Reconsume", "Reconsume", "1.0.1")]
+    [BepInPlugin("com.jiejasonliu.Reconsume", "Reconsume", "1.0.2")]
 	public class Reconsume : BaseUnityPlugin
 	{
         protected Dictionary<ItemDef, ItemDef> candidateItems;
