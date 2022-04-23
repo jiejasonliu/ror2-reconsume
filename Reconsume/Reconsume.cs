@@ -15,7 +15,7 @@ namespace Reconsume
 	public class Reconsume : BaseUnityPlugin
 	{
         protected Dictionary<ItemDef, ItemDef> candidateItems;
-        protected Dictionary<ItemDef, CandidateItemConfigData> candidateItemsConfigData;
+        protected Dictionary<ItemDef, CommonConfigData> candidateItemsConfigData;
 
         // power elixir config
         protected static ConfigEntry<bool> RefillPowerElixir, ScrapConsumedPowerElixir;
@@ -72,12 +72,12 @@ namespace Reconsume
                 { RoR2Content.Items.ExtraLifeConsumed, RoR2Content.Items.ExtraLife },
             };
 
-            // consumed item -> polymorphic config data
+            // consumed item -> polymorphic common config data
             candidateItemsConfigData = new()
             {
-                { DLC1Content.Items.HealingPotionConsumed, new CandidateItemConfigData(RefillPowerElixir, ScrapConsumedPowerElixir) },
-                { DLC1Content.Items.FragileDamageBonusConsumed, new CandidateItemConfigData(RefillDelicateWatch, ScrapConsumedDelicateWatch) },
-                { RoR2Content.Items.ExtraLifeConsumed, new CandidateItemConfigData(RefillDiosBestFriend, ScrapConsumedDiosBestFriend) },
+                { DLC1Content.Items.HealingPotionConsumed, new CommonConfigData(RefillPowerElixir, ScrapConsumedPowerElixir) },
+                { DLC1Content.Items.FragileDamageBonusConsumed, new CommonConfigData(RefillDelicateWatch, ScrapConsumedDelicateWatch) },
+                { RoR2Content.Items.ExtraLifeConsumed, new CommonConfigData(RefillDiosBestFriend, ScrapConsumedDiosBestFriend) },
 
             };
         }
