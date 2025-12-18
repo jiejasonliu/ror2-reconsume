@@ -5,15 +5,14 @@ using Mono.Cecil.Cil;
 using RoR2;
 using System;
 using System.Collections.Generic;
-using UnityEngine;
 
 namespace Reconsume
 {
 
     [BepInDependency(R2API.R2API.PluginGUID)]
-    [BepInPlugin("com.jiejasonliu.Reconsume", "Reconsume", "1.0.2")]
-	public class Reconsume : BaseUnityPlugin
-	{
+    [BepInPlugin("com.jiejasonliu.Reconsume", "Reconsume", "1.0.3")]
+    public class Reconsume : BaseUnityPlugin
+    {
         protected Dictionary<ItemDef, ItemDef> candidateItems;
         protected Dictionary<ItemDef, CommonConfigData> candidateItemsConfigData;
 
@@ -36,7 +35,7 @@ namespace Reconsume
             // hooks
             On.RoR2.Run.Start += Init_CandidateItems;
             On.RoR2.SceneDirector.PopulateScene += StageRestore_CandidateItems;
-            On.EntityStates.Scrapper.ScrappingToIdle.OnEnter += DropScrap_CandidateItems;
+            IL.RoR2.ScrapperController.BeginScrapping_UniquePickup += IL_FixItemTier_CandidateItems;
             IL.RoR2.PickupPickerController.SetOptionsFromInteractor += IL_ScrapperWhiteList_CandidateItems;
             IL.RoR2.HealthComponent.UpdateLastHitTime += IL_AlterHealStrength_PowerElixir;
 
@@ -59,7 +58,11 @@ namespace Reconsume
             ScrapConsumedDiosBestFriend = Config.Bind("DiosBestFriend", nameof(ScrapConsumedDiosBestFriend), false, "Allow scrapping consumed dio's best friend");
         }
 
-        /// find items from game content and setup mappings with configuration
+        /// <summary>
+        /// Mappings of consumed to unconsumed items.
+        /// </summary>
+        /// <param name="orig"></param>
+        /// <param name="self"></param>
         private void Init_CandidateItems(On.RoR2.Run.orig_Start orig, Run self)
         {
             orig(self);
@@ -107,130 +110,122 @@ namespace Reconsume
                             continue;
                         }
 
-                        var itemCount = playerInventory.GetItemCount(consumedItemDef);
-                        playerInventory.RemoveItem(consumedItemDef, itemCount);
-                        playerInventory.GiveItem(refilledItemDef, itemCount);
+                        // DLC 3 (alloyed collective): ignore any temporary or disabled items.
+                        var itemCount = playerInventory.GetItemCountPermanent(consumedItemDef);
+                        playerInventory.RemoveItemPermanent(consumedItemDef, itemCount);
+                        playerInventory.GiveItemPermanent(refilledItemDef, itemCount);
                     }
                 }
             }
         }
 
-
-        /// drop the correct scrap tier from the candidate items
-        [System.Diagnostics.CodeAnalysis.SuppressMessage("Member Access", "Publicizer001:Accessing a member that was not originally public", Justification = "Alternative to Reflection")]
-        private void DropScrap_CandidateItems(On.EntityStates.Scrapper.ScrappingToIdle.orig_OnEnter orig, EntityStates.Scrapper.ScrappingToIdle self)
+        /// <summary>
+        /// Since the item tier of consumed items are usually `NoTier`, we need to use the unconsumed item's tier in place of it
+        /// Otherwise we end up finding no scrap index and hence no scrap drops for those items.
+        /// </summary>
+        private void IL_FixItemTier_CandidateItems(ILContext il)
         {
-            orig(self);
-
-            foreach (var candidateItem in candidateItems)
-            {
-                var consumedItem = candidateItem.Key;
-                var refilledItem = candidateItem.Value;
-
-                // check if last scrapped item was candidate item
-                var lastScrappedItemIndex = self.scrapperController.lastScrappedItemIndex;
-                if (lastScrappedItemIndex == consumedItem.itemIndex)
-                {
-                    PickupIndex pickupIndex = PickupIndex.none;
-                    switch (refilledItem.tier)
-                    {
-                        case ItemTier.Tier1:
-                            pickupIndex = PickupCatalog.FindPickupIndex("ItemIndex.ScrapWhite");
-                            break;
-                        case ItemTier.Tier2:
-                            pickupIndex = PickupCatalog.FindPickupIndex("ItemIndex.ScrapGreen");
-                            break;
-                        case ItemTier.Tier3:
-                            pickupIndex = PickupCatalog.FindPickupIndex("ItemIndex.ScrapRed");
-                            break;
-                        case ItemTier.Boss:
-                            pickupIndex = PickupCatalog.FindPickupIndex("ItemIndex.ScrapYellow");
-                            break;
-                    }
-
-                    // scrap with the corresponding scrap tier
-                    if (pickupIndex != PickupIndex.none)
-                    {
-                        self.foundValidScrap = true;
-                        Transform transform = self.FindModelChild(EntityStates.Scrapper.ScrappingToIdle.muzzleString);
-                        PickupDropletController.CreatePickupDroplet(
-                          pickupIndex,
-                          transform.position,
-                          Vector3.up * EntityStates.Scrapper.ScrappingToIdle.dropUpVelocityStrength +
-                            transform.forward *
-                              EntityStates.Scrapper.ScrappingToIdle.dropForwardVelocityStrength
-                        );
-                        self.scrapperController.itemsEaten -= 1;
-                    }
-                }
-            }
-        }
-
-        /// whitelist the candidate items from interactables (i.e. scrappers)
-        private void IL_ScrapperWhiteList_CandidateItems(ILContext il)
-        {
-            ILCursor c = new ILCursor(il);
+            ILCursor c = new(il);
             c.GotoNext(
-                c => c.MatchLdarg(0),    // 00EF (ldarg.0)
-                c => c.MatchLdloc(2),    // 00F0 (ldloc.2) 
-                c => c.MatchCallvirt("System.Collections.Generic.List`1<RoR2.PickupPickerController/Option>", "ToArray")
+                MoveType.Before,
+                x => x.MatchCallvirt(typeof(RoR2.ItemDef), "get_tier"),                     // IL_0041: callvirt instance valuetype RoR2.ItemTier RoR2.ItemDef::get_tier()
+                x => x.MatchCall(typeof(RoR2.PickupCatalog), "FindScrapIndexForItemTier")   // IL_0046: call valuetype RoR2.PickupIndex RoR2.PickupCatalog::FindScrapIndexForItemTier(valuetype RoR2.ItemTier)
             );
 
-            c.Emit(OpCodes.Ldarg_1);    // push Interactor
-            c.Emit(OpCodes.Ldloc_2);    // push List<Pickup...Option>
-            
+            // move after `get_tier()` and push `pickupToTake` onto stack
+            c.Index += 1;
+            c.Emit(OpCodes.Ldarg_1);
+
+            // stack has the [RoR2.ItemTier (retval of get_tier), pickupToTake]
+            // push overriden Ror2.ItemTier for FindScrapIndexForItemTier to consume
+            c.EmitDelegate<Func<RoR2.ItemTier, RoR2.UniquePickup, RoR2.ItemTier>>((pickupToTakeItemTier, pickupToTake) =>
+            {
+                if (pickupToTakeItemTier == ItemTier.NoTier)
+                {
+                    PickupDef pickupDef = PickupCatalog.GetPickupDef(pickupToTake.pickupIndex);
+                    ItemIndex pickupItemIndex = pickupDef?.itemIndex ?? ItemIndex.None;
+
+                    foreach (var (consumedItemDef, unconsumedItemDef) in candidateItems)
+                    {
+                        // use the unconsumed item's tier instead
+                        if (pickupItemIndex == consumedItemDef.itemIndex)
+                            return unconsumedItemDef.tier;
+                    }
+                }
+                return pickupToTakeItemTier;
+            });
+        }
+
+
+        /// <summary>
+        /// Whitelist the candidate items from interactables (i.e. scrappers)
+        /// </summary>
+        private void IL_ScrapperWhiteList_CandidateItems(ILContext il)
+        {
+            ILCursor c = new(il);
+            c.GotoNext(
+                MoveType.Before,
+                x => x.MatchLdarg(0),    // IL_0008 (ldarg.0)
+                x => x.MatchLdloc(0),    // IL_0009 (ldloc.0) 
+                x => x.MatchCallvirt("System.Collections.Generic.List`1<RoR2.PickupPickerController/Option>", "ToArray") // IL_000A (callvirt instance !0[] class)
+            );
+
+            c.Emit(OpCodes.Ldarg_1);    // push Interactor; SetOptionsFromInteractor(Interactor activator)
+            c.Emit(OpCodes.Ldloc_0);    // push List<PickupPickerController.Option>
+
             // perform scoped CIL virtcall and update options with whitelisted items
-            // pops ldarg_1 (activator) and ldloc_2 (optionList) after delegate is invoked
+            // pops ldarg_1 (activator) and ldloc_0 (optionList) after delegate is invoked
             c.EmitDelegate<Action<Interactor, List<PickupPickerController.Option>>>((activator, optionList) =>
             {
-                if (activator)
+                Inventory playerInventory = activator?.GetComponent<CharacterBody>()?.inventory;
+                if (!playerInventory)
+                    return;
+
+                List<ItemIndex> itemIndexList = new(playerInventory.itemAcquisitionOrder);
+
+                // find candidate items in player's inventory
+                foreach (var itemIndex in itemIndexList)
                 {
-                    CharacterBody component = activator.GetComponent<CharacterBody>();
-                    if (component && component.inventory)
+                    ItemDef consumedItemDef = ItemCatalog.GetItemDef(itemIndex);
+                    if (candidateItems.TryGetValue(consumedItemDef, out ItemDef refilledItemDef))
                     {
-                        Inventory playerInventory = component.inventory;
-                        List<ItemIndex> itemIndexList = new(playerInventory.itemAcquisitionOrder);
+                        // config guard check
+                        if (!candidateItemsConfigData[consumedItemDef].CanScrap)
+                            continue;
 
-                        // find candidate items in player's inventory
-                        foreach (var itemIndex in itemIndexList)
+                        PickupIndex pickupIndex = PickupCatalog.FindPickupIndex(itemIndex);
+                        optionList.Add(new PickupPickerController.Option
                         {
-                            var consumedItemDef = ItemCatalog.GetItemDef(itemIndex);
-                            if (candidateItems.TryGetValue(consumedItemDef, out ItemDef refilledItemDef))
+                            available = true,
+                            pickup = new UniquePickup(pickupIndex)
                             {
-                                // config guard check
-                                if (!candidateItemsConfigData[consumedItemDef].CanScrap)
-                                {
-                                    continue;
-                                }
-
-                                optionList.Add(new PickupPickerController.Option
-                                {
-                                    available = true,
-                                    pickupIndex = PickupCatalog.FindPickupIndex(itemIndex)
-                                });
+                                decayValue = 0f,
                             }
-                        }
+                        });
                     }
                 }
             });
         }
 
-        /// alter the heal strength of the power elixir to balance it being "refillable"
+        /// <summary>
+        /// Alter the heal strength of the power elixir to balance it being refillable.
+        /// </summary>
         private void IL_AlterHealStrength_PowerElixir(ILContext il)
         {
-            ILCursor c = new ILCursor(il);
+            ILCursor c = new(il);
             c.GotoNext(
-                c => c.MatchLdarg(0),                       // 00B5 (ldarg.0)
-                c => c.MatchLdcR4(0.75f),                   // 00B6 (ldc.r4 0.75f)
-                c => c.MatchLdloca(out var _),              // 00BB (ldloca.s V_1)
-                c => c.MatchInitobj("RoR2.ProcChainMask")   // 00BD (initobj RoR2.ProcChainMask)
+                MoveType.Before,
+                x => x.MatchLdarg(0),                       // IL_00c0 (ldarg.0)
+                x => x.MatchLdcR4(0.75f),                   // IL_00c1 (ldc.r4 0.75f)
+                x => x.MatchLdloca(out var _),              // IL_00c6 (ldloca.s 4)
+                x => x.MatchInitobj("RoR2.ProcChainMask")   // IL_00c8 (initobj RoR2.ProcChainMask)
             );
 
-            // remove (ldc.r4 0.75f)
+            // remove (ldc.r4 0.75f) which is 00c0 + 1
             c.Index += 1;
             c.Remove();
 
-            // emit (ldc.r4 <float32>)
+            // insert (ldc.r4 <float32>)
             float healStrength = HealStrengthPowerElixir.Value;
             c.Emit(OpCodes.Ldc_R4, healStrength);
         }
