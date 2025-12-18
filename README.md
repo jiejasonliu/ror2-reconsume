@@ -1,16 +1,18 @@
 # [Reconsume](https://thunderstore.io/package/jiejasonliu/Reconsume/)
 
 Survivors of the Void brings consumable items; but unfortunately, they feel underwhelming.\
-Reconsume **restores consumed items at the beginning of each stage** and **allows them to be scrappable**.
+Reconsume **restores a portion of consumed items at the beginning of each stage** and **allows them to be scrappable**.
 
 ## Features
 
-- Restore consumed `power elixir`, `delicate watch`, and `dio's best friend`<sup><i>(off by default)</i></sup> at the beginning of each stage
-- Allow consumed `power elixir`, `delicate watch`, and `dio's best friend`<sup><i>(off by default)</i></sup> to be scrappable
-- Adjust heal strength of the power elixir to 25% max health for balancing
+- **Partial Restoration:** By default, restores 33% of your consumed items (rounded up) at the start of every stage.
+  - Supports `power elixir`, `delicate watch`, and `dio's best friend`<sup><i>(off by default)</i></sup>
+- **Item Scrapping:** Allows consumed items to be scrappable.
+  - Note: consumed `dio's best friend` is off by default
 - Highly configurable
+    - Change the percentage of how many consumed items are restored each stage 
 	- Change whether an item can be scrappable or refilled at the beginning of each stage
-	- Change the heal strength of the `power elixir` for balancing
+	- Change the healing strength of the `power elixir`
 
 ## Images
 
@@ -24,6 +26,8 @@ Reconsume **restores consumed items at the beginning of each stage** and **allow
 
 ## Changelog
 
+- `1.0.4` **Balance Update**: Items no longer restore 100% by default.
+  - Now restores 33% of a consumed stack per stage (configurable).
 - `1.0.3` Fix broken scrapper due to Alloyed Collective (DLC3)
 - `1.0.2` Fix broken scrapper due to `ItemDef.tier` changes in RoR2 v1.2.3
 - `1.0.1` Allow Dio's Best Friend to be restored and scrappable; however, this is **disabled by default.**

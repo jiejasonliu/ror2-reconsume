@@ -10,15 +10,18 @@ namespace Reconsume
 {
 
     [BepInDependency(R2API.R2API.PluginGUID)]
-    [BepInPlugin("com.jiejasonliu.Reconsume", "Reconsume", "1.0.3")]
+    [BepInPlugin("com.jiejasonliu.Reconsume", "Reconsume", "1.0.4")]
     public class Reconsume : BaseUnityPlugin
     {
         protected Dictionary<ItemDef, ItemDef> candidateItems;
         protected Dictionary<ItemDef, CommonConfigData> candidateItemsConfigData;
 
+        // global restore (0 - 1 with 1 being 100%)
+        protected static ConfigEntry<float> RefillConsumedPercent;
+
         // power elixir config
         protected static ConfigEntry<bool> RefillPowerElixir, ScrapConsumedPowerElixir;
-        protected static ConfigEntry<float> HealStrengthPowerElixir;
+        protected static ConfigEntry<float> HealingStrengthPowerElixir;
 
         // delicate watch config
         protected static ConfigEntry<bool> RefillDelicateWatch, ScrapConsumedDelicateWatch;
@@ -44,10 +47,13 @@ namespace Reconsume
 
         private void SetupConfiguration()
         {
+            // general
+            RefillConsumedPercent = Config.Bind("_General", nameof(RefillConsumedPercent), 0.33f, "Percentage of consumed items to restore each stage (0.0 - 1.0; 0.33 being 33%)");
+
             // power elixir
             RefillPowerElixir = Config.Bind("PowerElixir", nameof(RefillPowerElixir), true, "Restore power elixir at the beginning of each stage");
             ScrapConsumedPowerElixir = Config.Bind("PowerElixir", nameof(ScrapConsumedPowerElixir), true, "Allow scrapping consumed power elixirs");
-            HealStrengthPowerElixir = Config.Bind("PowerElixir", nameof(HealStrengthPowerElixir), 0.25f, "Heal strength of power elixir (vanilla default is 0.75)");
+            HealingStrengthPowerElixir = Config.Bind("PowerElixir", nameof(HealingStrengthPowerElixir), 0.75f, "Healing strength of power elixir (vanilla default is 0.75)");
 
             // delicate watch
             RefillDelicateWatch = Config.Bind("DelicateWatch", nameof(RefillDelicateWatch), true, "Restore delicate watch at the beginning of each stage");
@@ -90,6 +96,8 @@ namespace Reconsume
         {
             orig(self);
 
+            float restorePercent = Math.Clamp(RefillConsumedPercent.Value, 0, 1);
+
             // host: apply for each player on the server
             foreach (var playerController in PlayerCharacterMasterController.instances)
             {
@@ -111,9 +119,10 @@ namespace Reconsume
                         }
 
                         // DLC 3 (alloyed collective): ignore any temporary or disabled items.
-                        var itemCount = playerInventory.GetItemCountPermanent(consumedItemDef);
-                        playerInventory.RemoveItemPermanent(consumedItemDef, itemCount);
-                        playerInventory.GiveItemPermanent(refilledItemDef, itemCount);
+                        int itemCount = playerInventory.GetItemCountPermanent(consumedItemDef);
+                        int restoreCount = itemCount >= 1 ? Convert.ToInt32(Math.Ceiling(itemCount * restorePercent)) : 0;
+                        playerInventory.RemoveItemPermanent(consumedItemDef, restoreCount);
+                        playerInventory.GiveItemPermanent(refilledItemDef, restoreCount);
                     }
                 }
             }
@@ -226,8 +235,8 @@ namespace Reconsume
             c.Remove();
 
             // insert (ldc.r4 <float32>)
-            float healStrength = HealStrengthPowerElixir.Value;
-            c.Emit(OpCodes.Ldc_R4, healStrength);
+            float healingStrength = HealingStrengthPowerElixir.Value;
+            c.Emit(OpCodes.Ldc_R4, healingStrength);
         }
     }
 }
